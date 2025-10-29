@@ -9,6 +9,7 @@ export default async function handler(req: any, res: any) {
       return res.end(JSON.stringify({ error: "Method not allowed" }));
     }
 
+    res.setHeader("Cache-Control", "no-store");
     const docs = await readDocs();
 
     res.statusCode = 200;
@@ -21,3 +22,7 @@ export default async function handler(req: any, res: any) {
     res.end(JSON.stringify({ error: e?.message || "docs error" }));
   }
 }
+
+export const config = {
+  runtime: "nodejs",
+};
