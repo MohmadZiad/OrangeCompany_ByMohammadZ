@@ -207,6 +207,8 @@ export default async function handler(req: any, res: any) {
       return res.end(JSON.stringify({ error: "Method not allowed" }));
     }
 
+    res.setHeader("Cache-Control", "no-store");
+
     const clientIp =
       (typeof req.headers["x-forwarded-for"] === "string"
         ? req.headers["x-forwarded-for"].split(",")[0]?.trim()
@@ -393,7 +395,7 @@ export default async function handler(req: any, res: any) {
     // ===== SSE (Streaming) =====
     res.statusCode = 200;
     res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Cache-Control", "no-store, no-transform");
     res.setHeader("Connection", "keep-alive");
 
     const keepAlive = setInterval(() => {
@@ -459,3 +461,7 @@ export default async function handler(req: any, res: any) {
     res.end();
   }
 }
+
+export const config = {
+  runtime: "nodejs",
+};

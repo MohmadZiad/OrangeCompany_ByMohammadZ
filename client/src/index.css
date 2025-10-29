@@ -653,6 +653,51 @@
     mix-blend-mode: screen;
   }
 
+  .code-block {
+    margin: 0;
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, rgba(12, 18, 28, 0.95), rgba(24, 32, 46, 0.92));
+    color: #f1f5f9;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .code-block::before {
+    content: attr(data-language);
+    position: absolute;
+    top: 0.6rem;
+    right: 1rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(241, 245, 249, 0.65);
+  }
+
+  .code-block code {
+    display: block;
+    white-space: pre;
+  }
+
+  .token.keyword {
+    color: #ffdd8b;
+  }
+
+  .token.string {
+    color: #7ce9a0;
+  }
+
+  .token.number {
+    color: #8acbff;
+  }
+
+  .token.comment {
+    color: rgba(148, 163, 184, 0.7);
+    font-style: italic;
+  }
+
   .loading-ring {
     width: 1.5rem;
     height: 1.5rem;

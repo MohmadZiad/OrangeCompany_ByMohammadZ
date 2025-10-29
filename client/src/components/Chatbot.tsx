@@ -1,4 +1,11 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+  Fragment,
+} from "react";
 import {
   Card,
   CardContent,
@@ -18,10 +25,13 @@ import {
   Trash2,
   Maximize2,
   Minimize2,
+  PauseCircle,
+  PlayCircle,
+  RefreshCw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import type { ChatMessage, DocEntry } from "@shared/schema";
+import type { ChatMessage, DocEntry, Locale } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { SmartLinkPill } from "@/components/SmartLinkPill";
 import { CopyButton } from "@/components/CopyButton";
@@ -42,15 +52,19 @@ import {
 export function Chatbot() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [docs, setDocs] = useState<DocEntry[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [stoppedMidStream, setStoppedMidStream] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const handledNavigatePayloads = useRef<Set<string>>(new Set());
   const handledDocsUpdates = useRef<Set<string>>(new Set());
   const hasSeededNavigate = useRef(false);
+  const lastPromptRef = useRef<string>("");
+  const manualStopRef = useRef(false);
 
   const { isChatOpen, setChatOpen, chatMessages, addChatMessage, locale } =
     useAppStore();
@@ -172,7 +186,7 @@ export function Chatbot() {
   const handleSend = useCallback(
     async (text?: string) => {
       const messageText = text ?? message;
-      if (!messageText.trim() || isLoading) return;
+      if (!messageText.trim() || isLoading || isStreaming) return;
 
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
@@ -184,6 +198,10 @@ export function Chatbot() {
       addChatMessage(userMessage);
       setMessage("");
       setIsLoading(true);
+      setIsStreaming(false);
+      setStoppedMidStream(false);
+      manualStopRef.current = false;
+      lastPromptRef.current = messageText;
 
       // Temp assistant message for streaming
       const assistantMessageId = (Date.now() + 1).toString();
@@ -238,6 +256,7 @@ export function Chatbot() {
 
         // SSE streaming
         if (!response.body) throw new Error("No response body");
+        setIsStreaming(true);
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -284,31 +303,72 @@ export function Chatbot() {
           }));
         }
       } catch {
-        // Replace temp message with friendly error
-        useAppStore.setState((state) => ({
-          chatMessages: state.chatMessages.map((msg) =>
-            msg.id === assistantMessageId
-              ? {
-                  ...msg,
-                  content:
-                    locale === "ar"
-                      ? "عذرًا، حدث خطأ أثناء المعالجة. حاول مرة أخرى."
-                      : "Sorry, I encountered an error. Please try again.",
-                }
-              : msg
-          ),
-        }));
+        if (!manualStopRef.current) {
+          // Replace temp message with friendly error
+          useAppStore.setState((state) => ({
+            chatMessages: state.chatMessages.map((msg) =>
+              msg.id === assistantMessageId
+                ? {
+                    ...msg,
+                    content:
+                      locale === "ar"
+                        ? "عذرًا، حدث خطأ أثناء المعالجة. حاول مرة أخرى."
+                        : "Sorry, I encountered an error. Please try again.",
+                  }
+                : msg
+            ),
+          }));
+        }
       } finally {
+        setIsStreaming(false);
         setIsLoading(false);
+        if (!manualStopRef.current) {
+          setStoppedMidStream(false);
+        }
+        manualStopRef.current = false;
       }
     },
-    [message, isLoading, addChatMessage, chatMessages, locale]
+    [
+      message,
+      isLoading,
+      isStreaming,
+      addChatMessage,
+      chatMessages,
+      locale,
+    ]
   );
 
   const handleQuickReply = useCallback(
     (replyText: string) => handleSend(replyText),
     [handleSend]
   );
+
+  const handleStopStream = useCallback(() => {
+    if (!isStreaming) return;
+    manualStopRef.current = true;
+    abortRef.current?.abort();
+    setIsStreaming(false);
+    setIsLoading(false);
+    setStoppedMidStream(true);
+  }, [isStreaming]);
+
+  const handleResume = useCallback(() => {
+    if (!lastPromptRef.current) return;
+    setStoppedMidStream(false);
+    manualStopRef.current = false;
+    void handleSend(lastPromptRef.current);
+  }, [handleSend]);
+
+  const handleRegenerate = useCallback(() => {
+    const lastUser = [...chatMessages]
+      .reverse()
+      .find((msg) => msg.role === "user" && msg.content.trim());
+    if (!lastUser) return;
+    lastPromptRef.current = lastUser.content;
+    setStoppedMidStream(false);
+    manualStopRef.current = false;
+    void handleSend(lastUser.content);
+  }, [chatMessages, handleSend]);
 
   const openChat = useCallback(
     (max = false) => {
@@ -328,6 +388,13 @@ export function Chatbot() {
   const lblMax = isArabic ? "تكبير" : "Maximize";
   const lblRestore = isArabic ? "استعادة" : "Restore";
   const lblOpenMax = isArabic ? "فتح مكبّر" : "Open Maximize";
+
+  const statusLabel = (() => {
+    if (isStreaming) return isArabic ? "يتم البث الآن" : "Streaming";
+    if (isLoading) return isArabic ? "جارٍ التحضير" : "Thinking";
+    if (stoppedMidStream) return isArabic ? "توقّف مؤقت" : "Paused";
+    return isArabic ? "جاهز" : "Ready";
+  })();
 
   return (
     <>
@@ -512,27 +579,38 @@ export function Chatbot() {
                               </button>
 
                               {/* Content + SmartLink pills parsing */}
-                              <div className="space-y-2 text-[0.95rem] leading-7">
+                              <div className="space-y-3 text-[0.95rem] leading-7">
                                 {parseMessageSegments(msg.content).map(
-                                  (segment, index) =>
-                                    segment.type === "link" ? (
-                                      <SmartLinkPill
-                                        key={`${msg.id}-link-${index}`}
-                                        linkId={segment.linkId}
-                                        className={cn(
-                                          "inline-flex",
-                                          isUser &&
-                                            "bg-white/90 text-foreground"
-                                        )}
-                                      />
-                                    ) : (
-                                      <span
+                                  (segment, index) => {
+                                    if (segment.type === "link") {
+                                      return (
+                                        <SmartLinkPill
+                                          key={`${msg.id}-link-${index}`}
+                                          linkId={segment.linkId}
+                                          className={cn(
+                                            "inline-flex",
+                                            isUser &&
+                                              "bg-white/90 text-foreground"
+                                          )}
+                                        />
+                                      );
+                                    }
+
+                                    const nodes = renderRichText(
+                                      segment.content,
+                                      `${msg.id}-text-${index}`,
+                                      locale
+                                    );
+
+                                    return (
+                                      <div
                                         key={`${msg.id}-text-${index}`}
-                                        className="block whitespace-pre-wrap break-words"
+                                        className="space-y-2"
                                       >
-                                        {segment.content}
-                                      </span>
-                                    )
+                                        {nodes}
+                                      </div>
+                                    );
+                                  }
                                 )}
                               </div>
 
@@ -557,7 +635,7 @@ export function Chatbot() {
                       );
                     })}
 
-                    {isLoading && (
+                    {(isLoading || isStreaming) && (
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -566,7 +644,11 @@ export function Chatbot() {
                         <div className="flex items-center gap-3 rounded-3xl bg-white/80 px-4 py-3 text-foreground backdrop-blur dark:bg-white/10">
                           <span className="loading-ring" />
                           <span className="text-sm">
-                            {t("thinking", locale)}
+                            {isStreaming
+                              ? isArabic
+                                ? "يتم البث الآن"
+                                : "Streaming response"
+                              : t("thinking", locale)}
                           </span>
                         </div>
                       </motion.div>
@@ -581,25 +663,97 @@ export function Chatbot() {
                   isMaximized && "px-6"
                 )}
               >
-                {/* Quick Replies */}
-                {quickReplies.length > 0 && (
-                  <div className="flex w-full flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      {t("quickReplies", locale)}
-                    </span>
-                    {quickReplies.map((reply) => (
-                      <Badge
-                        key={reply.id}
+                <div className="flex w-full flex-col gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
                         variant="secondary"
-                        className="cursor-pointer rounded-full bg-white px-3 py-2 text-xs font-medium text-foreground shadow-sm transition hover:-translate-y-1"
-                        onClick={() => handleQuickReply(reply.text[locale])}
-                        data-testid={`quick-reply-${reply.id}`}
+                        size="sm"
+                        onClick={handleStopStream}
+                        disabled={!isStreaming}
+                        className="rounded-full border border-white/60 bg-white/90 px-3 text-xs font-medium text-foreground transition hover:bg-white dark:bg-white/10"
+                        data-testid="button-stop-stream"
                       >
-                        {reply.text[locale]}
-                      </Badge>
-                    ))}
+                        <PauseCircle className="mr-1 h-4 w-4" />
+                        {isArabic ? "إيقاف" : "Pause"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleResume}
+                        disabled={!stoppedMidStream || isStreaming || isLoading}
+                        className="rounded-full border border-white/60 bg-white/90 px-3 text-xs font-medium text-foreground transition hover:bg-white dark:bg-white/10"
+                        data-testid="button-resume-stream"
+                      >
+                        <PlayCircle className="mr-1 h-4 w-4" />
+                        {isArabic ? "استئناف" : "Resume"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRegenerate}
+                        disabled={isStreaming || isLoading || chatMessages.length === 0}
+                        className="rounded-full px-3 text-xs font-medium"
+                        data-testid="button-regenerate"
+                      >
+                        <RefreshCw className="mr-1 h-4 w-4" />
+                        {isArabic ? "إعادة توليد" : "Regenerate"}
+                      </Button>
+                    </div>
+
+                    <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span
+                          className={cn(
+                            "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+                            isStreaming
+                              ? "bg-primary/80"
+                              : stoppedMidStream
+                              ? "bg-amber-500/70"
+                              : isLoading
+                              ? "bg-muted-foreground/60"
+                              : "bg-emerald-500/70"
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            "relative inline-flex h-2.5 w-2.5 rounded-full",
+                            isStreaming
+                              ? "bg-primary"
+                              : stoppedMidStream
+                              ? "bg-amber-500"
+                              : isLoading
+                              ? "bg-muted-foreground"
+                              : "bg-emerald-500"
+                          )}
+                        />
+                      </span>
+                      {statusLabel}
+                    </span>
                   </div>
-                )}
+
+                  {quickReplies.length > 0 && (
+                    <div className="flex w-full flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-muted-foreground">
+                        {t("quickReplies", locale)}
+                      </span>
+                      {quickReplies.map((reply) => (
+                        <Badge
+                          key={reply.id}
+                          variant="secondary"
+                          className="cursor-pointer rounded-full bg-white px-3 py-2 text-xs font-medium text-foreground shadow-sm transition hover:-translate-y-1"
+                          onClick={() => handleQuickReply(reply.text[locale])}
+                          data-testid={`quick-reply-${reply.id}`}
+                        >
+                          {reply.text[locale]}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Recommended Smart Links */}
                 {recommendedSmartLinks.length > 0 && (
@@ -629,14 +783,14 @@ export function Chatbot() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder={t("chatPlaceholder", locale)}
-                    disabled={isLoading}
+                    disabled={isLoading || isStreaming}
                     className="h-12 flex-1 border-0 bg-transparent px-1 text-sm focus-visible:ring-0"
                     data-testid="input-chat-message"
                   />
                   <Button
                     type="submit"
                     size="icon"
-                    disabled={!message.trim() || isLoading}
+                    disabled={!message.trim() || isLoading || isStreaming}
                     className="h-11 w-11 rounded-full bg-gradient-to-br from-[#FF7A00] via-[#FF5400] to-[#FF3C00] text-white shadow-[0_20px_50px_-30px_rgba(255,90,0,0.65)] hover:from-[#FF6A00] hover:to-[#FF3C00]"
                     data-testid="button-send-message"
                     aria-label={t("send", locale)}
@@ -657,15 +811,17 @@ export function Chatbot() {
                     {locale === "ar" ? "حذف المحادثة" : "Clear chat"}
                   </Button>
 
-                  {isLoading ? (
-                    <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="loading-ring" /> {t("thinking", locale)}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                     🧡 Ready
-                    </span>
-                  )}
+                  <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                    {isStreaming || isLoading ? (
+                      <span className="loading-ring" />
+                    ) : (
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                      </span>
+                    )}
+                    {statusLabel}
+                  </span>
                 </div>
               </CardFooter>
             </Card>
@@ -766,6 +922,166 @@ function parseMessageSegments(content: string): MessageSegment[] {
   }
 
   return segments.length === 0 ? [{ type: "text", content }] : segments;
+}
+
+type RichContentSegment =
+  | { type: "text"; content: string }
+  | { type: "code"; content: string; language: string };
+
+function segmentRichContent(content: string): RichContentSegment[] {
+  const pattern = /```([a-z0-9-]+)?\n([\s\S]*?)```/gi;
+  const segments: RichContentSegment[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({
+        type: "text",
+        content: content.slice(lastIndex, match.index),
+      });
+    }
+    segments.push({
+      type: "code",
+      language: (match[1] ?? "text").toLowerCase(),
+      content: match[2] ?? "",
+    });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < content.length) {
+    segments.push({ type: "text", content: content.slice(lastIndex) });
+  }
+
+  return segments.length ? segments : [{ type: "text", content }];
+}
+
+const CODE_KEYWORDS = new Set(
+  [
+    "const",
+    "let",
+    "var",
+    "function",
+    "return",
+    "if",
+    "else",
+    "await",
+    "async",
+    "import",
+    "from",
+    "export",
+    "class",
+    "new",
+    "switch",
+    "case",
+    "break",
+    "continue",
+    "try",
+    "catch",
+    "finally",
+    "throw",
+    "type",
+    "interface",
+  ].map((kw) => kw.toLowerCase())
+);
+
+const CODE_TOKEN_PATTERN =
+  /(`[^`]*`|'[^']*'|"[^"]*"|\/\/.*|\/\*[\s\S]*?\*\/|\b\d+(?:\.\d+)?\b|\b[A-Za-z_][A-Za-z0-9_]*\b)/g;
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function highlightCode(value: string): string {
+  const tokens: { type: "plain" | "keyword" | "string" | "comment" | "number"; value: string }[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = CODE_TOKEN_PATTERN.exec(value)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push({ type: "plain", value: value.slice(lastIndex, match.index) });
+    }
+
+    const tokenValue = match[0];
+    if (/^\/\//.test(tokenValue) || /^\/\*/.test(tokenValue)) {
+      tokens.push({ type: "comment", value: tokenValue });
+    } else if (/^['"`]/.test(tokenValue)) {
+      tokens.push({ type: "string", value: tokenValue });
+    } else if (/^\d/.test(tokenValue)) {
+      tokens.push({ type: "number", value: tokenValue });
+    } else if (CODE_KEYWORDS.has(tokenValue.toLowerCase())) {
+      tokens.push({ type: "keyword", value: tokenValue });
+    } else {
+      tokens.push({ type: "plain", value: tokenValue });
+    }
+
+    lastIndex = match.index + tokenValue.length;
+  }
+
+  if (lastIndex < value.length) {
+    tokens.push({ type: "plain", value: value.slice(lastIndex) });
+  }
+
+  return tokens
+    .map((token) => {
+      const escaped = escapeHtml(token.value);
+      if (token.type === "plain") return escaped;
+      return `<span class="token ${token.type}">${escaped}</span>`;
+    })
+    .join("");
+}
+
+function renderRichText(
+  content: string,
+  key: string,
+  locale: Locale
+): JSX.Element[] {
+  const copyLabel = locale === "ar" ? "نسخ الكود" : "Copy code";
+
+  return segmentRichContent(content).flatMap((segment, index) => {
+    if (segment.type === "code") {
+      const html = highlightCode(segment.content);
+      return [
+        <div
+          key={`${key}-code-${index}`}
+          className="group relative mt-3 overflow-hidden rounded-2xl border border-white/50 bg-slate-950/90 text-left shadow-inner"
+        >
+          <div className="absolute right-3 top-3 opacity-0 transition group-hover:opacity-100">
+            <CopyButton
+              text={segment.content.trim()}
+              label={copyLabel}
+              variant="secondary"
+              className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs text-white backdrop-blur"
+            />
+          </div>
+          <pre className="code-block" data-language={segment.language}>
+            <code dangerouslySetInnerHTML={{ __html: html }} />
+          </pre>
+        </div>,
+      ];
+    }
+
+    const paragraphs = segment.content.split(/\n{2,}/);
+    return paragraphs.map((paragraph, pIndex) => {
+      const lines = paragraph.split(/\n/);
+      return (
+        <p
+          key={`${key}-text-${index}-${pIndex}`}
+          className="leading-7 text-sm text-foreground sm:text-[0.95rem]"
+        >
+          {lines.map((line, lineIndex) => (
+            <Fragment key={`${key}-text-line-${index}-${pIndex}-${lineIndex}`}>
+              {line}
+              {lineIndex < lines.length - 1 && <br />}
+            </Fragment>
+          ))}
+        </p>
+      );
+    });
+  });
 }
 
 /* ===== Prorata widgets ===== */

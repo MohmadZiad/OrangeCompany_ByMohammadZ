@@ -1,20 +1,97 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { useAppStore } from "@/lib/store";
 import { t } from "@/lib/i18n";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { Chatbot } from "@/components/Chatbot";
-import { OrangeCalculator } from "@/components/OrangeCalculator";
-import ProRataCalculator from "@/components/ProRataCalculator";
-import { SummaryPanel, SummaryPanelMobile } from "@/components/SummaryPanel";
 import { Button } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { MessageSquare, Sparkles, Zap, BookOpen } from "lucide-react";
 import { motion } from "framer-motion";
 import { AssistantHint } from "@/components/AssistantHint";
 
+function CalculatorSkeleton() {
+  return (
+    <div className="space-y-8">
+      <Skeleton className="h-24 rounded-3xl" />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Skeleton className="h-[420px] rounded-3xl" />
+        <div className="space-y-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-24 rounded-3xl" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProRataSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-24 rounded-3xl" />
+      <div className="grid gap-4 lg:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className="h-32 rounded-3xl" />
+        ))}
+      </div>
+      <Skeleton className="h-48 rounded-3xl" />
+    </div>
+  );
+}
+
+function SummarySkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-6 w-40 rounded-full" />
+      <Skeleton className="h-[360px] rounded-3xl" />
+    </div>
+  );
+}
+
+function ChatSkeleton() {
+  return (
+    <div className="fixed bottom-6 right-6 z-40 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#FF7A00] via-[#FF5400] to-[#FF3C00] opacity-80 shadow-[0_20px_60px_-28px_rgba(255,90,0,0.6)]">
+      <MessageSquare className="h-6 w-6 text-white" />
+    </div>
+  );
+}
+
+const OrangeCalculator = lazy(() =>
+  import("@/components/OrangeCalculator").then((mod) => ({
+    default: mod.OrangeCalculator,
+  }))
+);
+
+const ProRataCalculator = lazy(() =>
+  import("@/components/ProRataCalculator")
+);
+
+const SummaryPanel = lazy(() =>
+  import("@/components/SummaryPanel").then((mod) => ({
+    default: mod.SummaryPanel,
+  }))
+);
+
+const SummaryPanelMobile = lazy(() =>
+  import("@/components/SummaryPanel").then((mod) => ({
+    default: mod.SummaryPanelMobile,
+  }))
+);
+
+const Chatbot = lazy(() =>
+  import("@/components/Chatbot").then((mod) => ({ default: mod.Chatbot }))
+);
+
 export default function Home() {
   const { theme, setTheme, locale, setLocale, activeTab, setActiveTab, setChatOpen } = useAppStore();
+  const [docsStatus, setDocsStatus] = useState({
+    total: 0,
+    loading: true,
+    error: false,
+  });
 
   useEffect(() => {
     // Initialize theme and locale from store
@@ -60,6 +137,96 @@ export default function Home() {
       setChatOpen(true);
     }
   };
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const response = await fetch("/api/docs", { cache: "no-store" });
+        if (!response.ok) throw new Error("docs");
+        const data = await response.json();
+        if (!isMounted) return;
+        const total = Array.isArray(data?.docs) ? data.docs.length : 0;
+        setDocsStatus({ total, loading: false, error: false });
+      } catch {
+        if (!isMounted) return;
+        setDocsStatus((prev) => ({ ...prev, loading: false, error: true }));
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const docsGoal = 24;
+  const docProgress = useMemo(
+    () => Math.min(100, Math.round((docsStatus.total / docsGoal) * 100)),
+    [docsStatus.total]
+  );
+
+  const docStatusLabel = docsStatus.loading
+    ? locale === "ar"
+      ? "يتم تحميل الوثائق"
+      : "Loading docs"
+    : docsStatus.error
+    ? locale === "ar"
+      ? "تعذر تحميل الوثائق"
+      : "Docs unavailable"
+    : locale === "ar"
+    ? `تم تجهيز ${docsStatus.total} وثيقة`
+    : `${docsStatus.total} docs ready`;
+
+  const docBadgeLabel = docsStatus.loading
+    ? locale === "ar"
+      ? "تحميل"
+      : "Loading"
+    : docsStatus.error
+    ? locale === "ar"
+      ? "خطأ"
+      : "Error"
+    : `${docProgress}%`;
+
+  const heroTitle =
+    locale === "ar"
+      ? "كل أدوات أورنج في لوحة واحدة"
+      : "Your Orange cockpit, reimagined";
+  const heroSubtitle =
+    locale === "ar"
+      ? "حوّل الأسعار، البروراتا، والمحادثات الذكية إلى قرارات فورية."
+      : "Turn pricing, pro-rata math, and AI assistance into confident decisions.";
+
+  const heroStats = useMemo(
+    () => [
+      {
+        icon: <Sparkles className="h-5 w-5" />,
+        title:
+          locale === "ar" ? "نتائج لحظية" : "Instant outcomes",
+        description:
+          locale === "ar"
+            ? "الأرقام تتحدّث فور إدخال القيمة الأساسية"
+            : "Numbers refresh the moment you change the base price.",
+      },
+      {
+        icon: <Zap className="h-5 w-5" />,
+        title:
+          locale === "ar" ? "تدفّق بروراتا ذكي" : "Smart pro-rata",
+        description:
+          locale === "ar"
+            ? "أدر الفوترة المتغيرة مع شريط تقدم واضح"
+            : "Navigate dynamic billing with crystal-clear progress bars.",
+      },
+      {
+        icon: <BookOpen className="h-5 w-5" />,
+        title:
+          locale === "ar" ? "مكتبة محدثة" : "Live doc library",
+        description:
+          locale === "ar"
+            ? "تحديثات docs تتزامن تلقائيًا مع كل جلسة"
+            : "Docs sync automatically with every assistant session.",
+      },
+    ],
+    [locale]
+  );
 
   return (
     <div className="relative z-10 flex min-h-screen flex-col">
@@ -126,6 +293,129 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="container relative z-10 flex-1 px-4 py-10 sm:px-6 sm:py-12">
+        <motion.section
+          className="mb-12 grid gap-6 lg:grid-cols-[2fr_minmax(0,1fr)]"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <motion.div
+            whileHover={{ translateY: -4 }}
+            className="relative overflow-hidden rounded-[2.5rem] border border-white/40 bg-gradient-to-br from-[#FF8140] via-[#FF5D2D] to-[#FF3C00] p-8 text-white shadow-[0_70px_140px_-70px_rgba(255,90,0,0.65)]"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="max-w-xl space-y-3">
+                <p className="text-sm uppercase tracking-[0.3em] text-white/70">
+                  {locale === "ar" ? "لوحة تحكم أورنج" : "Orange control center"}
+                </p>
+                <h2 className="text-3xl font-semibold leading-tight sm:text-4xl">
+                  {heroTitle}
+                </h2>
+                <p className="text-sm text-white/80 sm:text-base">{heroSubtitle}</p>
+              </div>
+              <Badge
+                variant="secondary"
+                className="rounded-full border border-white/30 bg-white/20 px-4 py-2 text-xs font-semibold text-white backdrop-blur"
+              >
+                {locale === "ar" ? "متوافق مع Vercel" : "Vercel-ready"}
+              </Badge>
+            </div>
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              {heroStats.map((stat, index) => (
+                <div
+                  key={index}
+                  className="rounded-3xl bg-white/15 p-4 shadow-[0_18px_32px_-26px_rgba(0,0,0,0.45)] backdrop-blur"
+                >
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20">
+                    {stat.icon}
+                  </div>
+                  <h3 className="mt-4 text-base font-semibold">{stat.title}</h3>
+                  <p className="mt-2 text-xs text-white/75">{stat.description}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Button
+                size="lg"
+                className="rounded-full bg-white px-6 text-sm font-semibold text-[#FF4B00] shadow-[0_24px_48px_-28px_rgba(255,255,255,0.55)] hover:bg-white/90"
+                onClick={() => {
+                  setActiveTab("calculator");
+                  window.location.hash = "calculator";
+                }}
+              >
+                {locale === "ar" ? "ابدأ بالحاسبة" : "Launch calculator"}
+              </Button>
+              <Button
+                variant="ghost"
+                className="rounded-full border border-white/40 px-5 text-sm font-semibold text-white hover:bg-white/15"
+                onClick={() => {
+                  setActiveTab("assistant");
+                  setChatOpen(true);
+                  window.location.hash = "assistant";
+                }}
+              >
+                <MessageSquare className="mr-2 h-4 w-4" />
+                {locale === "ar" ? "افتح المساعد" : "Open assistant"}
+              </Button>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
+            className="rounded-3xl border border-white/60 bg-white/75 p-6 shadow-[0_40px_90px_-60px_rgba(255,90,0,0.45)] backdrop-blur-xl dark:bg-white/10"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FF7A00] via-[#FF5400] to-[#FF3C00] text-white shadow-[0_20px_48px_-28px_rgba(255,90,0,0.55)]">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">
+                    {locale === "ar" ? "حالة المستندات" : "Docs status"}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">{docStatusLabel}</p>
+                </div>
+              </div>
+              <Badge
+                variant="outline"
+                className="rounded-full border-white/40 bg-white/60 px-3 py-1 text-xs font-medium text-foreground"
+              >
+                {docBadgeLabel}
+              </Badge>
+            </div>
+            <div className="mt-6 space-y-4">
+              <Progress
+                value={docsStatus.loading || docsStatus.error ? 0 : docProgress}
+                className="h-2.5 overflow-hidden rounded-full bg-white/50"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  className="rounded-full border border-white/60 bg-white px-4 py-2 text-xs font-semibold text-foreground shadow-sm hover:bg-white/90"
+                  onClick={() => {
+                    setActiveTab("assistant");
+                    setChatOpen(true);
+                    window.location.hash = "assistant";
+                  }}
+                >
+                  {locale === "ar" ? "اطلب وثيقة" : "Request a doc"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="rounded-full border border-white/40 px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-white/80"
+                  onClick={() => {
+                    window.open("/api/docs", "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  {locale === "ar" ? "عرض JSON الخام" : "Raw docs JSON"}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.section>
+
         <div className="grid gap-8 lg:grid-cols-[1.618fr_minmax(0,1fr)] xl:grid-cols-[1.75fr_minmax(0,1fr)]">
           {/* Main Content Area */}
           <div data-reveal>
@@ -148,7 +438,9 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <OrangeCalculator />
+                  <Suspense fallback={<CalculatorSkeleton />}>
+                    <OrangeCalculator />
+                  </Suspense>
                 </motion.div>
               </TabsContent>
 
@@ -158,7 +450,9 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <ProRataCalculator />
+                  <Suspense fallback={<ProRataSkeleton />}>
+                    <ProRataCalculator />
+                  </Suspense>
                 </motion.div>
               </TabsContent>
 
@@ -188,19 +482,25 @@ export default function Home() {
               </TabsContent>
             </Tabs>
             <div className="mt-8 lg:hidden" data-reveal>
-              <SummaryPanelMobile />
+              <Suspense fallback={<SummarySkeleton />}>
+                <SummaryPanelMobile />
+              </Suspense>
             </div>
           </div>
 
           {/* Summary Panel (Desktop only) */}
           <aside className="hidden lg:block" data-reveal>
-            <SummaryPanel />
+            <Suspense fallback={<SummarySkeleton />}>
+              <SummaryPanel />
+            </Suspense>
           </aside>
         </div>
       </main>
 
       {/* Chatbot */}
-      <Chatbot />
+      <Suspense fallback={<ChatSkeleton />}>
+        <Chatbot />
+      </Suspense>
       <AssistantHint />
     </div>
   );
