@@ -302,8 +302,8 @@ export default function Home() {
                 {t("appTitle", locale)}
               </motion.h1>
               <motion.p
-                className="text-sm text-muted-foreground"
-                initial={{ opacity: 0, y: 12 }}
+                className="text-xs text-black/60 dark:text-white/60 sm:text-sm"
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.32, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               >
