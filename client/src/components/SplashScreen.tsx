@@ -138,7 +138,7 @@ export default function SplashScreen({
             variants={tileVariants}
           >
             {/* Gradient tile */}
-            <div className="absolute inset-0 rounded-[2.6rem] bg-[radial-gradient(130%_130%_at_12%_12%,_rgba(255,170,110,0.95),_rgba(255,120,40,0.85)_45%,_rgba(255,84,15,0.78)_78%)] shadow-[0_38px_95px_-32px_rgba(255,110,20,0.75)] ring-1 ring-white/20 dark:ring-black/30" />
+            <div className="absolute inset-0 rounded-[2.6rem] bg-[radial-gradient(130%_130%_at_10%_10%,_rgba(255,140,64,0.95),_rgba(255,90,0,0.85)_45%,_rgba(255,60,0,0.78)_80%)] shadow-[0_38px_90px_-32px_rgba(255,90,0,0.75)] ring-1 ring-white/20 dark:ring-black/30" />
 
             {/* Glow pulse */}
             <motion.div
