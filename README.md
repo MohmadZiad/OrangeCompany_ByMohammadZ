@@ -48,18 +48,17 @@ shared/                  # Shared types and utilities
    - `true` → renders the new Next.js interface
    - `false` → displays the preserved legacy experience
 
-3. **Run the backend + frontend together**
-   ```bash
-   npm run dev
-   ```
-   When `NEXT_PUBLIC_ORANGE_NEW_UI=true` the Express server boots the embedded Next.js dev server.
-   If the flag is `false` the classic Vite client is served instead.
-
-4. **Run the Next.js frontend only (optional)**
+3. **Run the frontend**
    ```bash
    npm run client:dev
    ```
-   Useful when iterating exclusively on the redesigned UI.
+   The UI is served from the Next development server.
+
+4. **Run the backend (optional)**
+   ```bash
+   npm run dev
+   ```
+   This continues to launch the Express server from `server/index.ts`.
 
 5. **Production build**
    ```bash

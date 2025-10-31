@@ -3,15 +3,7 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "types": ["vite/client"],
-    "noEmit": true,
-    "moduleResolution": "Node",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@shared/*": ["../shared/*"],
-      "@assets/*": ["../attached_assets/*"]
-    },
-    "strict": false
+    "noEmit": true
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]
