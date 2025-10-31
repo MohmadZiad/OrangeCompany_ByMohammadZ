@@ -6,3 +6,6 @@ vite.config.ts.*
 *.tar.gz
 .env
 .env.local
+# Next.js build output
+.next
+
