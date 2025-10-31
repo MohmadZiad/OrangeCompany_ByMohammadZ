@@ -37,9 +37,11 @@ export type SplashScreenProps = {
 export default function SplashScreen({
   visible,
   logo = (
-    <span className="text-4xl font-black text-white tracking-tight">O</span>
+    <span className="text-5xl font-black tracking-tight text-white drop-shadow-[0_0_14px_rgba(255,180,120,0.7)]">
+      O
+    </span>
   ),
-  subtitle = "Orange Tools",
+  subtitle = "Orange Tool",
   onFinish,
   autoHideAfter,
   progress,
@@ -88,13 +90,13 @@ export default function SplashScreen({
         exit: { opacity: 0.9 },
       }
     : {
-        initial: { scale: 0.8, opacity: 0 },
+        initial: { scale: 0.7, opacity: 0 },
         animate: {
-          scale: 1,
+          scale: [0.7, 1.04, 1],
           opacity: 1,
-          transition: { duration: 0.6, ease: [0.19, 1, 0.22, 1] },
+          transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] },
         },
-        exit: { scale: 0.98, opacity: 0, transition: { duration: 0.35 } },
+        exit: { scale: 0.96, opacity: 0, transition: { duration: 0.4 } },
       };
 
   const ringVariants = prefersReducedMotion
@@ -120,7 +122,7 @@ export default function SplashScreen({
           aria-busy={true}
           aria-live="polite"
           className={[
-            "fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(255,244,234,0.92)] backdrop-blur-xl",
+            "fixed inset-0 z-[80] flex items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,249,242,0.96),_rgba(255,215,188,0.78))] backdrop-blur-2xl",
             "dark:bg-[rgba(15,10,6,0.9)]",
             className ?? "",
           ].join(" ")}
@@ -132,18 +134,18 @@ export default function SplashScreen({
           style={accentStyle}
         >
           <motion.div
-            className="relative flex h-36 w-36 items-center justify-center rounded-[2.2rem]"
+            className="relative flex h-[11.5rem] w-[11.5rem] items-center justify-center rounded-[2.6rem]"
             variants={tileVariants}
           >
             {/* Gradient tile */}
-            <div className="absolute inset-0 rounded-[2.2rem] bg-[radial-gradient(120%_120%_at_0%_0%,_var(--accent),_#ff5a00_40%,_#ff3c00_80%)] shadow-[0_32px_80px_-30px_rgba(255,90,0,0.7)] ring-1 ring-white/20 dark:ring-black/20" />
+            <div className="absolute inset-0 rounded-[2.6rem] bg-[radial-gradient(130%_130%_at_12%_12%,_rgba(255,170,110,0.95),_rgba(255,120,40,0.85)_45%,_rgba(255,84,15,0.78)_78%)] shadow-[0_38px_95px_-32px_rgba(255,110,20,0.75)] ring-1 ring-white/20 dark:ring-black/30" />
 
             {/* Glow pulse */}
             <motion.div
-              className="absolute inset-[-6px] rounded-[2.5rem] blur-2xl opacity-60"
+              className="absolute inset-[-10px] rounded-[3rem] blur-3xl opacity-70"
               style={{
                 background:
-                  "radial-gradient(75% 75% at 50% 50%, var(--accent), transparent)",
+                  "radial-gradient(70% 70% at 50% 50%, rgba(255,160,90,0.9), transparent)",
               }}
               {...ringVariants}
             />
@@ -151,16 +153,49 @@ export default function SplashScreen({
             {/* Logo */}
             <motion.div
               initial={
-                prefersReducedMotion ? { opacity: 1 } : { y: 10, opacity: 0 }
+                prefersReducedMotion
+                  ? { opacity: 1 }
+                  : { y: 18, opacity: 0, filter: "blur(6px)" }
               }
               animate={{
                 y: 0,
                 opacity: 1,
-                transition: { delay: 0.15, duration: 0.45 },
+                filter: "blur(0px)",
+                transition: {
+                  delay: 0.18,
+                  duration: 0.75,
+                  ease: [0.22, 1, 0.36, 1],
+                },
               }}
               className="relative z-10 select-none"
             >
               {logo}
+            </motion.div>
+
+            {/* Wordmark */}
+            <motion.div
+              initial={
+                prefersReducedMotion
+                  ? { opacity: 1 }
+                  : { opacity: 0, y: 26, scale: 0.95 }
+              }
+              animate={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                textShadow:
+                  "0 0 20px rgba(255,180,120,0.55), 0 0 60px rgba(255,120,0,0.5)",
+                transition: {
+                  delay: 0.32,
+                  duration: 0.7,
+                  ease: [0.16, 1, 0.3, 1],
+                },
+              }}
+              className="absolute inset-x-0 top-[74%] flex items-center justify-center"
+            >
+              <span className="rounded-full border border-white/20 bg-white/20 px-4 py-1 text-sm font-semibold tracking-[0.4em] uppercase text-white/90 shadow-[0_14px_40px_-26px_rgba(255,90,0,0.65)] backdrop-blur">
+                ORANGE TOOL
+              </span>
             </motion.div>
           </motion.div>
 
@@ -172,7 +207,7 @@ export default function SplashScreen({
               y: 0,
               transition: { delay: 0.28, duration: 0.4 },
             }}
-            className="absolute mt-32 text-center"
+            className="absolute mt-36 text-center"
           >
             <div className="text-base font-semibold tracking-tight text-[color:var(--accent)] drop-shadow-[0_1px_0_rgba(255,255,255,0.25)] dark:drop-shadow-none">
               {subtitle}
@@ -180,7 +215,7 @@ export default function SplashScreen({
 
             {/* Progress bar */}
             {typeof progress === "number" && (
-              <div className="mt-4 h-2 w-64 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+              <div className="mt-4 h-2 w-72 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
                 <motion.div
                   className="h-full bg-[color:var(--accent)]"
                   initial={{ width: 0 }}
