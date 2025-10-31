@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --orange-50: #fff7f0;
+  --orange-100: #ffe7d6;
+  --orange-200: #ffd1ad;
+  --orange-300: #ffb680;
+  --orange-400: #ff9a59;
+  --orange-500: #ff7a1a;
+  --orange-600: #e06200;
+  --bg-light: #fafafa;
+  --bg-dark: #0f0e0d;
+  --text-1: #0e0e0e;
+  --text-2: #6b6b6b;
+  --grad-hero: linear-gradient(135deg, #ff7a1a 0%, #ffa94d 40%, #ffe7d6 100%);
+  --grad-glow: radial-gradient(60% 60% at 50% 50%, rgba(255, 122, 26, 0.25), rgba(255, 122, 26, 0) 70%);
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-[var(--bg-light)] text-[var(--text-1)] antialiased transition-colors duration-300;
+}
+
+html.dark body {
+  @apply bg-[var(--bg-dark)] text-white;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 122, 26, 0.4) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, rgba(255, 122, 26, 0.7), rgba(255, 169, 77, 0.7));
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}

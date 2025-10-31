@@ -8,6 +8,10 @@ import { nanoid } from "nanoid";
 
 const viteLogger = createLogger();
 
+const NEW_UI_ENABLED = process.env.NEXT_PUBLIC_ORANGE_NEW_UI === "true";
+const CLIENT_ROOT = path.resolve(import.meta.dirname, "..", "legacy-client");
+const NEXT_DIR = path.resolve(import.meta.dirname, "..", "client");
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -19,7 +23,25 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-export async function setupVite(app: Express, server: Server) {
+export async function setupFrontend(app: Express, server: Server) {
+  if (NEW_UI_ENABLED) {
+    await setupNext(app, true);
+    return;
+  }
+
+  await setupVite(app, server);
+}
+
+export async function serveFrontend(app: Express) {
+  if (NEW_UI_ENABLED) {
+    await setupNext(app, false);
+    return;
+  }
+
+  serveStatic(app);
+}
+
+async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -45,12 +67,7 @@ export async function setupVite(app: Express, server: Server) {
     const url = req.originalUrl;
 
     try {
-      const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "..",
-        "client",
-        "index.html",
-      );
+      const clientTemplate = path.resolve(CLIENT_ROOT, "index.html");
 
       // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
@@ -67,7 +84,7 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
-export function serveStatic(app: Express) {
+function serveStatic(app: Express) {
   const distPath = path.resolve(import.meta.dirname, "public");
 
   if (!fs.existsSync(distPath)) {
@@ -81,5 +98,32 @@ export function serveStatic(app: Express) {
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
+  });
+}
+
+async function setupNext(app: Express, dev: boolean) {
+  const mod = await import("next").catch((error: unknown) => {
+    viteLogger.error(
+      `Failed to load Next.js runtime. Did you run \`npm install\`?\n${String(error)}`,
+      { timestamp: true }
+    );
+    throw error;
+  });
+
+  const nextApp = mod.default({
+    dev,
+    dir: NEXT_DIR,
+  });
+
+  await nextApp.prepare();
+  const handle = nextApp.getRequestHandler();
+
+  app.all("*", async (req, res) => {
+    try {
+      await handle(req, res);
+    } catch (error) {
+      viteLogger.error((error as Error).message, { timestamp: true });
+      res.status(500).send("Internal Server Error");
+    }
   });
 }
