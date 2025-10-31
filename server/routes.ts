@@ -8,7 +8,7 @@ import {
   type DocEntry,
 } from "@shared/schema";
 import { extractAndStoreDocs, readDocs, slugifyTitle } from "./docs";
-import { computeProrata, buildScript, ymd } from "../client/src/lib/proRata";
+import { computeProrata, buildScript, ymd } from "../legacy-client/src/lib/proRata";
 
 /* ----------------------------- Rate limiting ----------------------------- */
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();

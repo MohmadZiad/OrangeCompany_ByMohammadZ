@@ -6,7 +6,7 @@ import express, {
   type NextFunction,
 } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { setupFrontend, serveFrontend, log } from "./vite";
 
 const app = express();
 
@@ -73,9 +73,9 @@ app.use((req, res, next) => {
 
   // Use Vite dev server in development, static assets in production
   if (app.get("env") === "development") {
-    await setupVite(app, server);
+    await setupFrontend(app, server);
   } else {
-    serveStatic(app);
+    await serveFrontend(app);
   }
 
   // Single allowed port (per your infra)
