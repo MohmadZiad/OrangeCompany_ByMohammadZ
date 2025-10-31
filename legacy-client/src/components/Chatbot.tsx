@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import type { ChatMessage, ChatPayload, DocEntry, Locale } from "@shared/schema";
+import type { ChatMessage, DocEntry, Locale } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { SmartLinkPill } from "@/components/SmartLinkPill";
 import { CopyButton } from "@/components/CopyButton";
@@ -1086,23 +1086,10 @@ function renderRichText(
 
 /* ===== Prorata widgets ===== */
 
-type ProrataPayload = Extract<ChatPayload, { kind: "prorata" }> extends never
-  ? {
-      kind: "prorata";
-      locale: Locale;
-      data: {
-        period?: string;
-        proDays?: string;
-        percent?: string;
-        monthlyNet?: string;
-        prorataNet?: string;
-        invoiceDate?: string;
-        coverageUntil?: string;
-        script?: string;
-        fullInvoiceGross?: number;
-      };
-    }
-  : Extract<ChatPayload, { kind: "prorata" }>;
+type ProrataPayload = Extract<
+  NonNullable<ChatMessage["payload"]>,
+  { kind: "prorata" }
+>;
 
 function ProrataSummaryCard({
   data,
@@ -1113,35 +1100,30 @@ function ProrataSummaryCard({
 }) {
   const isArabic = locale === "ar";
   const label = (en: string, ar: string) => (isArabic ? ar : en);
-  const safe = (value?: string) => value ?? "—";
-  const proDaysSummary = [data.proDays, data.percent]
-    .filter((entry): entry is string => Boolean(entry))
-    .join(" · ") || "—";
-  const scriptText = data.script ?? "";
 
   return (
     <div className="space-y-4 rounded-[1.8rem] border border-white/70 bg-gradient-to-br from-[#FFECD9]/80 via-[#FFE6CE]/85 to-[#FFD9B7]/85 p-5 text-sm text-foreground shadow-inner backdrop-blur">
       <div className="grid gap-3 md:grid-cols-2">
-        <ProrataMetric label={label("Period", "الفترة")} value={safe(data.period)} />
+        <ProrataMetric label={label("Period", "الفترة")} value={data.period} />
         <ProrataMetric
           label={label("Pro-days", "أيام البروراتا")}
-          value={proDaysSummary}
+          value={`${data.proDays} · ${data.percent}`}
         />
         <ProrataMetric
           label={label("Monthly (net)", "الاشتراك الشهري")}
-          value={safe(data.monthlyNet)}
+          value={data.monthlyNet}
         />
         <ProrataMetric
           label={label("Pro-rata (net)", "قيمة البروراتا")}
-          value={safe(data.prorataNet)}
+          value={data.prorataNet}
         />
         <ProrataMetric
           label={label("Invoice date", "تاريخ الفاتورة")}
-          value={safe(data.invoiceDate)}
+          value={data.invoiceDate}
         />
         <ProrataMetric
           label={label("Coverage until", "تغطية حتى")}
-          value={safe(data.coverageUntil)}
+          value={data.coverageUntil}
         />
       </div>
 
@@ -1160,11 +1142,11 @@ function ProrataSummaryCard({
           dir={isArabic ? "rtl" : "ltr"}
           className="max-h-48 overflow-y-auto text-xs leading-6 whitespace-normal text-foreground"
         >
-          {scriptText || label("No script available", "لا يوجد نص متاح")}
+          {data.script}
         </p>
         <div className="flex justify-end">
           <CopyButton
-            text={scriptText}
+            text={data.script}
             label={label("Copy", "نسخ")}
             variant="secondary"
             className="rounded-full bg-gradient-to-r from-[#FF7A00] via-[#FF5400] to-[#FF3C00] px-4 py-2 text-white shadow-[0_18px_42px_-28px_rgba(255,90,0,0.65)] hover:from-[#FF6A00] hover:to-[#FF3C00]"
