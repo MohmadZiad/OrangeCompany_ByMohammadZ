@@ -1,217 +1,80 @@
-# Orange Tools
+# Orange Tool Interface
 
-A modern, single-page web application featuring professional Orange pricing calculator, Pro-Rata billing calculator, and an AI-powered assistant.
+A production-ready Next.js experience for Orange Tool featuring immersive motion, a refreshed brand system, and dual-language support. The redesign keeps the existing operational logic available behind a feature flag while showcasing a new hero dashboard, calculators, pro-rata analytics, assistant timeline, and documentation hub.
 
-## Features
+## Highlights
+- **Brand-first UI** with luxurious orange gradients, glassmorphism surfaces, and large rounded geometry.
+- **Motion system** powered by Framer Motion with nuanced hover states, scroll reveals, and a first-load splash animation.
+- **Theme + locale persistence** using `next-themes` and localStorage (Arabic/English with instant RTL/LTR flips).
+- **Feature flag** via `NEXT_PUBLIC_ORANGE_NEW_UI` to switch between the new experience and the legacy client instantly.
+- **Accessibility-aware** components with ≥4.5:1 contrast, keyboard focus rings, and responsive typography.
 
-### 🧮 Orange Price Calculator
-- Custom numeric keypad UI for easy input
-- Real-time calculations for four pricing variants:
-  - Base price
-  - Nos_b_Nos: `A + (A/2 × 0.4616) + (A/2 × 0.16)`
-  - Voice Calls Only: `A × 1.4616`
-  - Data Only: `A × 1.16`
-- Formula tooltips and copy-to-clipboard functionality
-- Example data button for quick testing
-
-### 📊 Pro-Rata Calculator
-- 15-day billing cycle calculations
-- Date pickers for activation, invoice, and custom end dates
-- Visual progress bar showing percentage used
-- Detailed receipt-style explanation in current language
-- Text-to-speech functionality (Web Speech API)
-- Copy and reset capabilities
-
-### 🤖 AI Assistant Chatbot
-- OpenAI-powered (GPT-5) conversational AI
-- Explains calculator formulas and usage
-- Supports both English and Arabic
-- Floating button with slide-in panel
-- Quick-reply suggestions
-- Message history persisted in localStorage
-
-### 🎨 Multi-Theme Support
-Four beautiful themes with localStorage persistence:
-- **Orange** (Default) - Warm, energetic orange accent
-- **Dark** - High-contrast dark mode
-- **Blossom** - Soft pink/purple palette
-- **Mint** - Cool green/teal theme
-
-### 🌍 Full Internationalization
-- English (LTR) and Arabic (RTL) support
-- Auto-detection of browser language
-- Localized number formatting
-- Currency display in JD (Jordanian Dinar)
-- Arabic numerals in AR locale
-
-### ♿ Accessibility
-- Keyboard navigation throughout
-- ARIA labels and roles
-- WCAG AA contrast ratios
-- Screen reader friendly
-- Focus indicators on all interactive elements
-
-## Tech Stack
-
-### Frontend
-- **React 18** with TypeScript
-- **Tailwind CSS** + shadcn/ui components
-- **Zustand** for state management
-- **React Hook Form** + Zod for form validation
-- **Framer Motion** for animations
-- **Lucide React** for icons
-- **date-fns** for date manipulation
-- **Wouter** for routing
-
-### Backend
-- **Express** server
-- **OpenAI SDK** (GPT-5)
-- Basic rate limiting (10 requests/minute)
-- Environment-based API key management
+## Project Structure
+```
+client/                  # Next.js app router project
+  app/
+    layout.tsx           # Injects theme + language providers, sets globals
+    page.tsx             # Feature flag controlled entry point
+  components/
+    Header.tsx           # Glass header with logo, language switcher, theme toggle, CTA
+    GradientBG.tsx       # Hero background glow and animated geometry
+    SplashScreen.tsx     # First-load splash with blur-in logo
+    sections/            # Hero, KPI cards, feature grid, calculators, pro-rata, assistant, docs
+    ui/Card.tsx          # Shared glass card styling with hover sheen
+    legacy/LegacyApp.tsx # Minimal legacy shell rendered when the flag is disabled
+  lib/
+    i18n.ts              # English/Arabic copy blocks
+    utils.ts             # Helpers for classNames and formatting
+  styles/globals.css     # Tailwind layers + CSS variables for the brand palette
+  tailwind.config.ts     # Tailwind config scoped to the Next app
+  next.config.mjs
+legacy-client/           # Original Vite-based client kept for reference
+server/                  # Existing Express backend remains untouched
+shared/                  # Shared types and utilities
+```
 
 ## Getting Started
 
-### Prerequisites
-- Node.js 18+ 
-- OpenAI API key
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies:
+1. **Install dependencies**
    ```bash
    npm install
    ```
 
-3. Create a `.env.local` file in the root directory:
+2. **Set the feature flag**
+   Create a `.env.local` inside `client/` (or export at runtime):
    ```env
-   OPENAI_API_KEY=sk-your-openai-api-key-here
+   NEXT_PUBLIC_ORANGE_NEW_UI=true
    ```
+   - `true` → renders the new Next.js interface
+   - `false` → displays the preserved legacy experience
 
-4. Start the development server:
+3. **Run the frontend**
+   ```bash
+   npm run client:dev
+   ```
+   The UI is served from the Next development server.
+
+4. **Run the backend (optional)**
    ```bash
    npm run dev
    ```
+   This continues to launch the Express server from `server/index.ts`.
 
-5. Open your browser and navigate to `http://localhost:5000`
+5. **Production build**
+   ```bash
+   npm run build
+   ```
+   This command compiles the Next.js frontend and bundles the Express server with esbuild.
 
-## Project Structure
-
-```
-ProRataChatbot/
-├── client/                 ← واجهة المستخدم (React + Vite + Tailwind)
-│   └── src/
-│       ├── components/     ← عناصر الواجهة (الحاسبتين، الشات، لوحة الملخّص...)
-│       │   ├── OrangeCalculator.tsx
-│       │   ├── ProRataCalculator.tsx
-│       │   ├── Chatbot.tsx
-│       │   ├── SummaryPanel.tsx, NumericKeypad.tsx, ...
-│       │   └── ui/         ← عناصر shadcn/ui المصنّعة مسبقًا
-│       ├── lib/            ← منطق الأعمال والمساعدات
-│       │   ├── calc.ts     ← صيغ حاسبة أورنج (دوال نقية)
-│       │   ├── proRata.ts  ← صيغ الـ Pro-Rata (دوال نقية)
-│       │   ├── i18n.ts     ← ترجمات EN/AR و"ردود سريعة" للشات
-│       │   ├── format.ts   ← تنسيق عملة/تواريخ/أرقام (يدعم أرقام عربية)
-│       │   └── store.ts    ← Zustand (سمة/لغة/رسائل الشات)
-│       ├── pages/Home.tsx  ← التابات الثلاث: Calculator / Pro-Rata / Assistant
-│       ├── App.tsx, main.tsx, index.css
-│       └── index.html
-├── server/                 ← الخادم (Express)
-│   ├── index.ts            ← دخول التطبيق: يجهّز Express + Vite + الاستماع على المنفذ
-│   ├── routes.ts           ← مسارات الـ API (خصوصًا POST /api/chat + Rate-limit + SSE)
-│   ├── openai.ts           ← تهيئة OpenAI + SYSTEM_PROMPT
-│   ├── storage.ts          ← تخزين داخل الذاكرة (نموذجياً للمستخدمين)
-│   └── vite.ts             ← دمج Vite في التطوير/تقديم ملفات الإنتاج
-├── shared/
-│   └── schema.ts           ← Zod سكيما + Types مشتركة (مدخلات/مخرجات الحاسبات، رسائل الشات، Theme/Locale...)
-├── attached_assets/        ← أصول ثابتة (أيقونات/صور…)
-├── tailwind.config.ts      ← إعداد ألوان ومتغيّرات الثيمات
-├── postcss.config.js
-├── vite.config.ts          ← Vite للواجهة + alias لـ "@", "@shared"
-├── package.json            ← سكربتات التشغيل والبناء
-└── README.md               ← تعليمات الاستخدام
-
-```
-
-## Usage
-
-### Calculator Tab
-1. Enter a base price using the numeric keypad or input field
-2. Results update in real-time
-3. Click the copy button on any result card to copy the value
-4. Hover over the `?` icon to see the formula
-5. Use "Fill Example" to populate with sample data
-
-### Pro-Rata Tab
-1. Select the activation date
-2. Select the invoice issue date
-3. Enter monthly subscription value
-4. Optionally add full invoice amount and custom end date
-5. Toggle the 15-day cycle switch if needed
-6. Click "Calculate" to see results
-7. Use "Copy Text" to copy the explanation
-8. Use "Read Aloud" for text-to-speech
-
-### Assistant Tab
-1. Click the "Help" button in the header or floating button
-2. Type your question or click a quick reply
-3. Chat with the AI about calculator formulas and usage
-4. Messages persist in localStorage
-
-### Hash-Based Deep Linking
-Navigate directly to tabs using URL hashes:
-- `#calculator` - Orange Price Calculator
-- `#pro-rata` - Pro-Rata Calculator
-- `#assistant` - AI Assistant
-
-### Theme Switching
-Click the palette icon in the header to switch between Orange, Dark, Blossom, and Mint themes. Your choice is saved in localStorage.
-
-### Language Switching
-Click the languages icon in the header to toggle between English and Arabic. The interface updates immediately with full RTL support for Arabic.
-
-## API Endpoints
-
-### POST /api/chat
-Chat with the OpenAI assistant.
-
-**Request:**
-```json
-{
-  "messages": [
-    {
-      "role": "user",
-      "content": "How do I calculate Nos_b_Nos?",
-      "timestamp": 1234567890
-    }
-  ]
-}
-```
-
-**Response:**
-```json
-{
-  "message": "The Nos_b_Nos formula is..."
-}
-```
-
-**Rate Limiting:** 10 requests per minute per IP
+## Design System Notes
+- Primary gradient token `var(--grad-hero)` powers hero surfaces and CTAs.
+- `Card` components apply glass surfaces, hover lift (+4px), and sheen lines.
+- Inputs are pill-shaped with orange focus rings and helper labels.
+- Motion durations follow the 180–260 ms micro-interaction / 480–700 ms macro-transition cadence.
+- RTL layout is fully supported through `LanguageProvider`, updating `<html dir/lang>` live.
 
 ## Environment Variables
+- `NEXT_PUBLIC_ORANGE_NEW_UI` — toggles between the redesigned UI (`true`) and the legacy interface (`false`).
+- Existing backend variables (OpenAI, database, etc.) remain unchanged.
 
-- `OPENAI_API_KEY` - Your OpenAI API key (required)
-- `NODE_ENV` - Environment mode (development/production)
-
-## Browser Support
-
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-
-## License
-
-This project is for demonstration purposes.
-
-## Credits
-
-Built with modern web technologies and best practices for accessibility, internationalization, and user experience.
+Enjoy the refreshed Orange Tool experience! ✨
