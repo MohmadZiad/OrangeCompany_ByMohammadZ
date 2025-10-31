@@ -21,16 +21,9 @@ import { AssistantHint } from "@/components/AssistantHint";
 
 function CalculatorSkeleton() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <Skeleton className="h-24 rounded-3xl" />
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Skeleton className="h-[420px] rounded-3xl" />
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-24 rounded-3xl" />
-          ))}
-        </div>
-      </div>
+      <Skeleton className="h-[420px] rounded-3xl" />
     </div>
   );
 }
@@ -39,12 +32,7 @@ function ProRataSkeleton() {
   return (
     <div className="space-y-6">
       <Skeleton className="h-24 rounded-3xl" />
-      <div className="grid gap-4 lg:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton key={index} className="h-32 rounded-3xl" />
-        ))}
-      </div>
-      <Skeleton className="h-48 rounded-3xl" />
+      <Skeleton className="h-[360px] rounded-3xl" />
     </div>
   );
 }
@@ -52,15 +40,15 @@ function ProRataSkeleton() {
 function SummarySkeleton() {
   return (
     <div className="space-y-4">
-      <Skeleton className="h-6 w-40 rounded-full" />
-      <Skeleton className="h-[360px] rounded-3xl" />
+      <Skeleton className="h-6 w-32 rounded-full" />
+      <Skeleton className="h-[320px] rounded-3xl" />
     </div>
   );
 }
 
 function ChatSkeleton() {
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#FF7A00] via-[#FF5400] to-[#FF3C00] opacity-80 shadow-[0_20px_60px_-28px_rgba(255,90,0,0.6)]">
+    <div className="fixed bottom-6 right-6 z-40 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#FF8A3D] via-[#FF6F0F] to-[#FF4600] opacity-80 shadow-[0_20px_60px_-24px_rgba(255,110,20,0.65)]">
       <MessageSquare className="h-6 w-6 text-white" />
     </div>
   );
@@ -163,6 +151,8 @@ export default function Home() {
     };
   }, []);
 
+  const localeIsArabic = locale === "ar";
+
   const docsGoal = 24;
   const docProgress = useMemo(
     () => Math.min(100, Math.round((docsStatus.total / docsGoal) * 100)),
@@ -170,35 +160,33 @@ export default function Home() {
   );
 
   const docStatusLabel = docsStatus.loading
-    ? locale === "ar"
+    ? localeIsArabic
       ? "يتم تحميل الوثائق"
       : "Loading docs"
     : docsStatus.error
-    ? locale === "ar"
+    ? localeIsArabic
       ? "تعذر تحميل الوثائق"
       : "Docs unavailable"
-    : locale === "ar"
+    : localeIsArabic
     ? `تم تجهيز ${docsStatus.total} وثيقة`
     : `${docsStatus.total} docs ready`;
 
   const docBadgeLabel = docsStatus.loading
-    ? locale === "ar"
+    ? localeIsArabic
       ? "تحميل"
       : "Loading"
     : docsStatus.error
-    ? locale === "ar"
+    ? localeIsArabic
       ? "خطأ"
       : "Error"
     : `${docProgress}%`;
 
-  const heroTitle =
-    locale === "ar"
-      ? "كل أدوات أورنج في لوحة واحدة"
-      : "Your Orange cockpit, reimagined";
-  const heroSubtitle =
-    locale === "ar"
-      ? "حوّل الأسعار، البروراتا، والمحادثات الذكية إلى قرارات فورية."
-      : "Turn pricing, pro-rata math, and AI assistance into confident decisions.";
+  const heroTitle = localeIsArabic
+    ? "كل أدوات أورنج في لوحة واحدة"
+    : "All of Orange, perfectly orchestrated";
+  const heroSubtitle = localeIsArabic
+    ? "حوّل الحسابات، البروراتا، والمحادثة الذكية إلى لوحة واحدة مترفة."
+    : "Turn pricing, pro-rata flows, and AI dialogue into one luxurious control room.";
 
   const heroStats = useMemo(
     () => [
@@ -248,7 +236,7 @@ export default function Home() {
             : "Docs stream in live with contextual hints and quick actions at hand.",
       },
     ],
-    [locale]
+    [localeIsArabic]
   );
 
   const cockpitTiles = useMemo(

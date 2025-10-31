@@ -122,7 +122,7 @@ export default function SplashScreen({
           aria-busy={true}
           aria-live="polite"
           className={[
-            "fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(255,244,234,0.92)] backdrop-blur-xl",
+            "fixed inset-0 z-[80] flex items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,249,242,0.96),_rgba(255,215,188,0.78))] backdrop-blur-2xl",
             "dark:bg-[rgba(15,10,6,0.9)]",
             className ?? "",
           ].join(" ")}
