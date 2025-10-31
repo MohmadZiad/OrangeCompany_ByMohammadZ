@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { useAppStore } from "@/lib/store";
 import { t } from "@/lib/i18n";
-import { Tabs, TabsContent, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsTrigger, TabsList } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Button } from "@/components/ui/button";
@@ -443,7 +443,8 @@ export default function Home() {
                 transition={{ delay: 0.1, duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
               >
                 <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col gap-4" data-testid="tabs-main">
-                  <div className="neo-dock">
+                  {/* ✅ TabsList يحفظ سياق RovingFocusGroup */}
+                  <TabsList className="neo-dock">
                     <TabsTrigger
                       value="calculator"
                       data-testid="tab-calculator"
@@ -465,7 +466,7 @@ export default function Home() {
                     >
                       {t("assistant", locale)}
                     </TabsTrigger>
-                  </div>
+                  </TabsList>
 
                   <TabsContent value="calculator" className="neo-swap-enter">
                     <div className="neo-card neo-scroll min-h-[280px] p-4">
