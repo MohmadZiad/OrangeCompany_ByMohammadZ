@@ -33,7 +33,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="relative min-h-screen overflow-hidden">
+        <div className="relative h-screen overflow-hidden">
           <AmbientBackdrop />
           <AnimatePresence mode="wait">
             <motion.div
